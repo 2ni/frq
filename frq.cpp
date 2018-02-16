@@ -3,7 +3,7 @@
  *
  * c implementation of frequency counter with GPIO interrupt
  *
- * frequency measurement on GPIO12 up to ~280kHz
+ * frequency measurement on GPIO up to ~280kHz
  *
  */
 
@@ -16,14 +16,59 @@ void clear_isr() {
     GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, s);
 }
 
-void ICACHE_RAM_ATTR subscribe_isr(void (*isr)()) {
+int get_func(int gpio) {
+  int func=0;
+
+  switch(gpio) {
+    case 0:
+      func = FUNC_GPIO0;
+    break;
+    case 1:
+      func = FUNC_GPIO1;
+    break;
+    case 2:
+      func = FUNC_GPIO2;
+    break;
+    case 3:
+      func = FUNC_GPIO3;
+    break;
+    case 4:
+      func = FUNC_GPIO4;
+    break;
+    case 5:
+      func = FUNC_GPIO5;
+    break;
+    case 9:
+      func = FUNC_GPIO9;
+    break;
+    case 10:
+      func = FUNC_GPIO10;
+    break;
+    case 12:
+      func = FUNC_GPIO12;
+    break;
+    case 13:
+      func = FUNC_GPIO13;
+    break;
+    case 14:
+      func = FUNC_GPIO14;
+    break;
+    case 15:
+      func = FUNC_GPIO15;
+    break;
+  }
+
+  return func;
+}
+
+void ICACHE_RAM_ATTR subscribe_isr(void (*isr)(), int gpio) {
     ETS_GPIO_INTR_DISABLE();
 
-    ETS_GPIO_INTR_ATTACH(isr, 12); // GPIO12/D6 interrupt handler
-    PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, FUNC_GPIO12); // Set GPIO12 function
-    gpio_output_set(0, 0, 0, GPIO_ID_PIN(12)); // Set GPIO12 as input
-    GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, BIT(12)); // Clear GPIO12 status
-    gpio_pin_intr_state_set(GPIO_ID_PIN(12), GPIO_PIN_INTR_POSEDGE); // Interrupt on any GPIO12 edge
+    ETS_GPIO_INTR_ATTACH(isr, gpio); // GPIO12/D6 interrupt handler
+    PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, get_func(gpio)); // Set GPIO12 function
+    gpio_output_set(0, 0, 0, GPIO_ID_PIN(gpio)); // Set GPIO12 as input
+    GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, BIT(gpio)); // Clear GPIO12 status
+    gpio_pin_intr_state_set(GPIO_ID_PIN(gpio), GPIO_PIN_INTR_POSEDGE); // Interrupt on any GPIO12 edge
 
     ETS_GPIO_INTR_ENABLE() ;
 }
@@ -40,10 +85,10 @@ void ICACHE_RAM_ATTR isr_measure_count() {
  * function get()
  * measures frequency in kHz by counting ticks during given time period
  */
-float get_frequ(void) {
+float get_frequ(int gpio) {
     unsigned long s;
 
-    subscribe_isr(isr_measure_count);
+    subscribe_isr(isr_measure_count, gpio);
 
     int total_count = 0;
 
