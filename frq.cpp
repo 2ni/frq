@@ -64,11 +64,11 @@ int get_func(int gpio) {
 void ICACHE_RAM_ATTR subscribe_isr(void (*isr)(), int gpio) {
     ETS_GPIO_INTR_DISABLE();
 
-    ETS_GPIO_INTR_ATTACH(isr, gpio); // GPIO12/D6 interrupt handler
-    PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, get_func(gpio)); // Set GPIO12 function
-    gpio_output_set(0, 0, 0, GPIO_ID_PIN(gpio)); // Set GPIO12 as input
-    GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, BIT(gpio)); // Clear GPIO12 status
-    gpio_pin_intr_state_set(GPIO_ID_PIN(gpio), GPIO_PIN_INTR_POSEDGE); // Interrupt on any GPIO12 edge
+    ETS_GPIO_INTR_ATTACH(isr, gpio);
+    PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, get_func(gpio));
+    gpio_output_set(0, 0, 0, GPIO_ID_PIN(gpio));
+    GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, BIT(gpio));
+    gpio_pin_intr_state_set(GPIO_ID_PIN(gpio), GPIO_PIN_INTR_POSEDGE);
 
     ETS_GPIO_INTR_ENABLE() ;
 }
