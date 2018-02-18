@@ -10,94 +10,56 @@
 #include "frq.h"
 volatile uint32 frq_count;
 
-void clear_isr() {
-    // clear interrupts status
-    uint32 s = GPIO_REG_READ(GPIO_STATUS_ADDRESS);
-    GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, s);
-}
-
-int get_func(int gpio) {
-  int func=0;
-
-  switch(gpio) {
-    case 0:
-      func = FUNC_GPIO0;
-    break;
-    case 1:
-      func = FUNC_GPIO1;
-    break;
-    case 2:
-      func = FUNC_GPIO2;
-    break;
-    case 3:
-      func = FUNC_GPIO3;
-    break;
-    case 4:
-      func = FUNC_GPIO4;
-    break;
-    case 5:
-      func = FUNC_GPIO5;
-    break;
-    case 9:
-      func = FUNC_GPIO9;
-    break;
-    case 10:
-      func = FUNC_GPIO10;
-    break;
-    case 12:
-      func = FUNC_GPIO12;
-    break;
-    case 13:
-      func = FUNC_GPIO13;
-    break;
-    case 14:
-      func = FUNC_GPIO14;
-    break;
-    case 15:
-      func = FUNC_GPIO15;
-    break;
-  }
-
-  return func;
-}
-
-void ICACHE_RAM_ATTR subscribe_isr(void (*isr)(), int gpio) {
+void ICACHE_RAM_ATTR subscribe_isr(void (*isr)(int), int gpio, int *ok) {
     ETS_GPIO_INTR_DISABLE();
+    if (ok) {*ok=0;}
 
-    ETS_GPIO_INTR_ATTACH(isr, gpio);
-    PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, get_func(gpio));
-    gpio_output_set(0, 0, 0, GPIO_ID_PIN(gpio));
-    GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, BIT(gpio));
-    gpio_pin_intr_state_set(GPIO_ID_PIN(gpio), GPIO_PIN_INTR_POSEDGE);
+    // some GPIO's should not be used
+    if (!evil[gpio]) {
+      PIN_FUNC_SELECT(mux[gpio], func[gpio]);
+      gpio_output_set(0, 0, 0, GPIO_ID_PIN(gpio));
+      GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, BIT(gpio));
+      ETS_GPIO_INTR_ATTACH(isr, gpio);
+      gpio_pin_intr_state_set(GPIO_ID_PIN(gpio), GPIO_PIN_INTR_POSEDGE);
+
+      if (ok) {*ok=1;}
+    }
 
     ETS_GPIO_INTR_ENABLE() ;
 }
 
-void ICACHE_RAM_ATTR isr_measure_count() {
+void ICACHE_RAM_ATTR isr_measure_count(int gpio) {
     ETS_GPIO_INTR_DISABLE();
-    frq_count++;
+    uint32 gpio_status = GPIO_REG_READ(GPIO_STATUS_ADDRESS);
+    if (gpio_status & BIT(gpio)) {
+      frq_count++;
+    }
 
-    clear_isr();
+    GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, gpio_status);
+
     ETS_GPIO_INTR_ENABLE();
 }
 
 /*
- * function get()
+ * function get(<GPIO pin>)
+ * returns -1 if sth is wrong
  * measures frequency in kHz by counting ticks during given time period
  */
 float get_frequ(int gpio) {
     unsigned long s;
-
-    subscribe_isr(isr_measure_count, gpio);
-
+    int ok;
     int total_count = 0;
+
+    subscribe_isr(isr_measure_count, gpio, &ok);
+    if (!ok) { return -1.0; }
 
     // get average measurements
     for (int c=0; c<MEASURE_AMOUNT; c++) {
         frq_count = 0;
         s = system_get_time();
         while (system_get_time()<(s+MEASURE_TIME)) {
-          //os_delay_us(1000);
+          // TODO use timer interrupt
+          //os_delay_us(100);
           ; // wait for interrupts
         }
         total_count += frq_count;
