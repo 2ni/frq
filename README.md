@@ -19,8 +19,17 @@ void setup() {
 }
 
 void loop() {
-  float f = get_frequ();
-  DF("frequency on GPIO12/D7: %d.%01dkHz\n", (int)f, (int)(f*10)%10);
+  float value;
+  int ready;
+  char cv[5];
+
+  get_frequ(12, &value, &ready);
+  while(!ready) { yield(); }
+  if(value>=0) {
+    dtostrf(value, 2, 1, cv);
+    DF("frequency on GPIO12/D7: %skHz\n", cv);
+  }
+
   delay(1000);
 }
 ```
