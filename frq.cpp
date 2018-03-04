@@ -26,7 +26,7 @@ void ICACHE_RAM_ATTR subscribe_isr(void (*isr)(int), int gpio, int *ok) {
     // some GPIO's should not be used
     if (!evil[gpio]) {
       PIN_FUNC_SELECT(mux[gpio], func[gpio]);
-      gpio_output_set(0, 0, 0, GPIO_ID_PIN(gpio));
+      // not needed, does interfere with preset gpio settings gpio_output_set(0, 0, 0, GPIO_ID_PIN(gpio));
       GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, BIT(gpio));
       ETS_GPIO_INTR_ATTACH(isr, gpio);
       gpio_pin_intr_state_set(GPIO_ID_PIN(gpio), GPIO_PIN_INTR_POSEDGE);
